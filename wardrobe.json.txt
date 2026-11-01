@@ -1,0 +1,141 @@
+{
+  "festival_boishakh": {
+    "dresses": [
+      "white_red_saree_pohela_boishakh.jpg",
+      "image_20261030_135723.webp"
+    ],
+    "keywords": [
+      "boishakh",
+      "pohela",
+      "noboborsho"
+    ]
+  },
+  "festival_eid": {
+    "dresses": [
+      "eid_green_salwar.jpg",
+      "image_20261030_135741.webp"
+    ],
+    "keywords": [
+      "eid",
+      "roja",
+      "ramadan"
+    ]
+  },
+  "festival_valentine": {
+    "dresses": [
+      "red_party_gown.jpg",
+      "image_20261030_135402.webp"
+    ],
+    "keywords": [
+      "valentine",
+      "love"
+    ]
+  },
+  "beach_travel": {
+    "dresses": [
+      "white_tropical_swimsuit.jpg",
+      "tropical_bikini.jpg",
+      "beach_dress_white.jpg"
+    ],
+    "keywords": [
+      "beach",
+      "coxsbazar",
+      "kuakata",
+      "sea",
+      "swim",
+      "travel",
+      "hotel"
+    ],
+    "images_we_created": [
+      "image_20261030_135244.webp",
+      "image_20261030_135245.webp",
+      "image_20261030_135125.webp"
+    ]
+  },
+  "formal_office": {
+    "dresses": [
+      "black_business_suit.jpg",
+      "navy_formal.jpg",
+      "beige_blazer.jpg"
+    ],
+    "keywords": [
+      "office",
+      "meeting",
+      "mail",
+      "formal",
+      "business",
+      "job"
+    ],
+    "images_we_created": [
+      "image_20261030_135447.webp",
+      "image_20261030_135448.webp"
+    ]
+  },
+  "party_night": {
+    "dresses": [
+      "red_gown.jpg",
+      "black_sequin.jpg",
+      "white_offshoulder.jpg"
+    ],
+    "keywords": [
+      "party",
+      "birthday",
+      "night",
+      "club"
+    ],
+    "images_we_created": [
+      "image_20261030_135402.webp",
+      "image_20261030_135403.webp"
+    ]
+  },
+  "daily_home_drawing_room": {
+    "dresses": [
+      "pink_salwar.jpg",
+      "blue_salwar.jpg",
+      "yellow_salwar.jpg"
+    ],
+    "keywords": [
+      "home",
+      "drawing room",
+      "casual",
+      "adda"
+    ],
+    "images_we_created": [
+      "image_20261030_135833.webp",
+      "image_20261030_135833_1.webp",
+      "image_20261030_135835.webp"
+    ]
+  },
+  "bengali_traditional": {
+    "dresses": [
+      "red_gold_saree.jpg",
+      "white_pink_salwar.jpg"
+    ],
+    "keywords": [
+      "saree",
+      "salwar",
+      "bengali",
+      "traditional"
+    ],
+    "images_we_created": [
+      "image_20261030_135636.webp",
+      "image_20261030_135638.webp"
+    ]
+  },
+  "casual_jeans_tshirt": {
+    "dresses": [
+      "blue_jeans_white_tshirt.jpg",
+      "black_jeans_pink_tshirt.jpg"
+    ],
+    "keywords": [
+      "jeans",
+      "tshirt",
+      "casual"
+    ],
+    "images_we_created": [
+      "image_20261030_135933.webp",
+      "image_20261030_135933_1.webp",
+      "image_20261030_135935.webp"
+    ]
+  }
+}
