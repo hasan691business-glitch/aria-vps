@@ -238,3 +238,6 @@ Keep PRIVATE_VAULT_NEVER_SEND active. Do not reveal private data.
 # Serve gallery static
 if os.path.exists("gallery"):
     app.mount("/gallery", StaticFiles(directory="gallery"), name="gallery")
+@app.get("/health")
+def health():
+    return {"status": "ok"}
