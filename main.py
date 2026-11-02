@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from datetime import datetime
 import json
 
@@ -65,15 +66,22 @@ def choose_outfit():
             wardrobe = json.load(f)
         if wardrobe:
             k = list(wardrobe.keys())[0]
-            img = wardrobe[k].get("image", "gallery/default.jpg") if isinstance(wardrobe[k], dict) else "gallery/default.jpg"
+            v = wardrobe[k]
+            img = v.get("image", "gallery/default.jpg") if isinstance(v, dict) else "gallery/default.jpg"
             return f"[Outfit: {k} | Image: {img}]"
     except:
         pass
     return "[Outfit: casual | Image: gallery/default.jpg]"
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {"message": "Aria VPS Running - Vector Memory Ready", "outfit": choose_outfit(), "supabase": bool(supabase), "time": str(datetime.now())}
+    if os.path.exists("index.html"):
+        try:
+            with open("index.html", "r", encoding="utf-8") as f:
+                return f.read()
+        except:
+            pass
+    return "<html><body><h1>Aria VPS Running - Vector Ready</h1><p>Please add index.html for Dashboard</p><p><a href='/memory'>Memory</a> | <a href='/health'>Health</a> | <a href='/gallery/'>Gallery</a></p></body></html>"
 
 @app.get("/health")
 def health():
@@ -100,14 +108,14 @@ def chat(q: str = ""):
     reply = f"Bujhechi: {q}"
     if groq_client and q:
         try:
-            sys_prompt = "You are Aria, personal AI for Hasan. Reply in simple Bengali, with example, as user likes. If user asks to learn course, explain in Bangla easy."
+            sys_prompt = "You are Aria, personal AI for Hasan Reza from Bangladesh. Reply in simple Bengali, with example, as user likes. If user asks to learn course, explain in Bangla easy, step by step."
             comp = groq_client.chat.completions.create(
                 messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": q}],
                 model="llama-3.3-70b-versatile",
             )
             reply = comp.choices[0].message.content
         except Exception as e:
-            reply = f"Shikhechi: {q}"
+            reply = f"Shikhechi: {q} - Ami ekhon shikchi"
     return {"reply": reply, "outfit": choose_outfit(), "supabase": bool(supabase)}
 
 @app.get("/learn")
