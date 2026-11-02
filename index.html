@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aria - Personal AI Agent</title>
+<style>
+body { font-family: sans-serif; text-align: center; margin-top: 10%; background: #fff; }
+#searchBox { width: 60%; max-width: 600px; padding: 15px 50px 15px 20px; font-size: 18px; border-radius: 25px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+#micBtn { margin-left: -45px; cursor: pointer; border: none; background: none; font-size: 20px; }
+#result { margin-top: 30px; text-align: left; max-width: 700px; margin-left: auto; margin-right: auto; padding: 20px; }
+.outfit { margin-top: 20px; }
+.outfit img { max-width: 300px; border-radius: 10px; }
+.links a { margin: 10px; text-decoration: none; color: #1a73e8; }
+</style>
+</head>
+<body>
+<h1>🌸 Aria - Personal AI Agent</h1>
+<div class="links">
+<a href="/gallery/">Gallery</a> | <a href="/memory">Memory</a> | <a href="/health">Health</a>
+</div>
+<br><br>
+<div>
+<input type="text" id="searchBox" placeholder="Ask anything... বাংলায় লিখো বা মুখে বলো...">
+<button id="micBtn" onclick="startVoice()">🎤</button>
+<button onclick="doSearch()" style="padding:10px 20px; margin-left:10px; border-radius:20px; border:none; background:#1a73e8; color:white; cursor:pointer;">Search</button>
+</div>
+<div id="result"></div>
+<div id="outfit" class="outfit"></div>
+
+<script>
+function startVoice() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'bn-BD';
+  recognition.onresult = function(e) {
+    document.getElementById('searchBox').value = e.results[0][0].transcript;
+    doSearch();
+  };
+  recognition.start();
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchBox').value;
+  if(!q) return;
+  document.getElementById('result').innerHTML = '⏳ Aria ভাবছে...';
+  try {
+    const res = await fetch(`/chat?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    document.getElementById('result').innerHTML = `<b>Reply:</b><br>${data.reply}<br><br><small>${data.outfit}</small>`;
+    // Try to show image from outfit
+    if(data.outfit) {
+      const match = data.outfit.match(/Image: (.*)\]/);
+      if(match) {
+        const imgPath = match[1].trim();
+        document.getElementById('outfit').innerHTML = `<img src="/${imgPath}" onerror="this.style.display='none'">`;
+      }
+    }
+  } catch(e) {
+    document.getElementById('result').innerHTML = 'Error: ' + e;
+  }
+}
+
+document.getElementById('searchBox').addEventListener('keypress', function(e){
+  if(e.key === 'Enter') doSearch();
+});
+</script>
+</body>
+</html>
