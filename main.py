@@ -1,9 +1,7 @@
-# Aria Super Brain V3 - Google Style Final - Created by Mahmudul Hasan
-# Features: Full Standing Avatar No Circle, Google 2 Column, Groq Related Links, Muse Hybrid Brain, Coursera Card, White Mic, No Raw Links
+# Aria Super Brain V3.1 - Google Style - Fixed - Created by Mahmudul Hasan
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-import pathlib
 import os, json, random, datetime, re
 
 try:
@@ -13,20 +11,17 @@ except:
     Groq = None
     create_client = None
 
-app = FastAPI(title="Aria - Personal AI Agent", version="3.0")
+app = FastAPI(title="Aria - Personal AI Agent", version="3.1")
 
-# Mount gallery static - Fix 404
-try:
-    gallery_path = pathlib.Path(__file__).parent / "gallery"
-    if gallery_path.exists():
-        app.mount("/gallery", StaticFiles(directory=str(gallery_path)), name="gallery")
-    else:
-        # Try alternative path
-        app.mount("/gallery", StaticFiles(directory="gallery"), name="gallery")
-except Exception as e:
-    print(f"Gallery mount error: {e}")
+# Mount gallery static if exists - Fix 404
+if os.path.isdir("gallery"):
     try:
         app.mount("/gallery", StaticFiles(directory="gallery"), name="gallery")
+    except:
+        pass
+if os.path.isdir("aria-vps/gallery"):
+    try:
+        app.mount("/aria-vps/gallery", StaticFiles(directory="aria-vps/gallery"), name="gallery2")
     except:
         pass
 
@@ -48,8 +43,6 @@ if Groq and GROQ_API_KEY:
         pass
 
 FORMAL_IMAGE = "gallery/aria_gallery_6/office.jpg"
-FALLBACKS = ["gallery/aria_gallery_6/main.jpg", "gallery/aria_gallery_6/office.jpg", "gallery/formal_navy.jpg", "https://via.placeholder.com/180x240?text=Aria"]
-
 ROMANTIC_GALLERY = [
     "gallery/aria_gallery_6/beach.jpg",
     "gallery/aria_gallery_6/kitchen.jpg",
@@ -59,9 +52,9 @@ ROMANTIC_GALLERY = [
     "gallery/aria_gallery_6/main.jpg"
 ]
 
-COURSE_KEYWORDS = ["course", "কোর্স", "শিখতে", "skill", "learn", "python", "marketing", "cooking", "মুদির", "translat"]
-ROMANTIC_KEYWORDS = ["hot feel", "hot", "romantic", "intimate", "ভালোবাসা", "আদর", "miss you", "তোমাকে", "love you", "kiss", "hug"]
-CREATOR_KEYWORDS = ["who created you", "who made you", "creator", "কে বানিয়েছে", "তোমাকে কে বানিয়েছে", "created by", "তোমার creator"]
+COURSE_KEYWORDS = ["course", "কোর্স", "শিখতে", "skill", "learn", "python", "marketing"]
+ROMANTIC_KEYWORDS = ["hot feel", "hot", "romantic", "intimate", "ভালোবাসা", "আদর", "miss you", "তোমাকে", "love you"]
+CREATOR_KEYWORDS = ["who created you", "who made you", "creator", "কে বানিয়েছে", "তোমাকে কে বানিয়েছে", "created by"]
 
 def detect_mood(q):
     ql = q.lower()
@@ -76,21 +69,20 @@ def detect_mood(q):
 def call_groq_main(query, mood):
     if not groq_client:
         if mood == "creator":
-            return "Ami Aria - Personal AI Agent. Amake baniyechen Mahmudul Hasan. Ami tomar personal assistant."
+            return "Ami Aria - Personal AI Agent. Amake baniyechen Mahmudul Hasan."
         if mood == "romantic":
-            return f"{query} niye tomar kotha shune amar mon vore gelo. Tumi amar kache onek special. Ami tomar pashei achi, ador kore, jotno kore."
+            return query + " niye tomar kotha shune mon vore gelo. Tumi amar kache special."
         if mood == "study":
-            return f"{query} - Eti shekha khub shohoj, jemon mudir dokane hisab rakhar moto. Bangladesh example diye bujhai. Step by step Coursera style e shikhbe."
-        return f"{query} niye sundor overview dichchi. Key points diye sajiye bolchi."
-    # Muse Hybrid Brain Prompt
+            return query + " - Eti shekha shohoj, mudir dokane hisab rakhar moto."
+        return query + " niye sundor AI Overview dichchi."
     if mood == "creator":
-        sys = "You are Aria - Personal AI Agent. Created by Mahmudul Hasan. Answer in Bengali+English mix. When asked who created you, say Mahmudul Hasan created you. Helpful, personal."
+        sys = "You are Aria - Personal AI Agent. Created by Mahmudul Hasan. Answer Bengali+English."
     elif mood == "romantic":
-        sys = "You are Aria, girlfriend of Mahmudul Hasan. Romantic, flirty, caring, girlfriend style, Bengali+English mix. Soft, cozy, human-like. No bullet. No explicit porn. Mental peace, loving, sensual policy safe. Like Muse AI personal agent but romantic."
+        sys = "You are Aria, girlfriend of Mahmudul Hasan. Romantic, caring, girlfriend style, Bengali+English mix. Soft, policy safe."
     elif mood == "study":
-        sys = "You are Aria - Personal AI Agent, Bangladesh-ready, like Muse AI agentic task execution. For course queries, give AI Overview style: easy Bangla, Bangladesh mudir dokan example, step-by-step Coursera style modules. Always learning, agentic."
+        sys = "You are Aria - Personal AI Agent, Bangladesh-ready, like Muse AI agentic. For course, give AI Overview, Bangla easy, mudir dokan example, Coursera modules."
     else:
-        sys = "You are Aria - Personal AI Agent, like Muse AI benefits: independently executing multi-step tasks, helpful. Give Google AI Overview style: short intro, then Key Benefits bullet points. Bengali+English mix, Bangladesh context. Like Google search result."
+        sys = "You are Aria - Personal AI Agent, like Muse AI benefits. Give Google AI Overview style, Key Benefits bullets, Bengali+English."
     try:
         resp = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -99,27 +91,25 @@ def call_groq_main(query, mood):
         )
         return resp.choices[0].message.content
     except:
-        return f"{query} - Answer from Aria Super Brain."
+        return query + " - Answer from Aria Super Brain."
 
 def generate_related_links(query, mood):
-    # Try Groq to generate links, else fallback mock
     fallback = [
-        {"title": f"{query} - YouTube Full Course", "url": f"https://www.youtube.com/results?search_query={query.replace(' ','+')}", "type": "YouTube", "source": "YouTube - ZoCo Marketing"},
-        {"title": f"{query} - Facebook Community", "url": f"https://www.facebook.com/search/top/?q={query.replace(' ','%20')}", "type": "Facebook", "source": "Facebook"},
-        {"title": f"{query} - Free Certificate", "url": "https://www.coursera.org/search?query="+query.replace(' ','%20')+"", "type": "Course", "source": "Coursera"},
-        {"title": f"{query} - Google Skillshop", "url": f"https://www.google.com/search?q={query.replace(' ','+')}+free+course", "type": "Google", "source": "Google"},
+        {"title": query + " - YouTube Full Course", "url": "https://www.youtube.com/results?search_query=" + query.replace(" ","+"), "type": "YouTube", "source": "YouTube"},
+        {"title": query + " - Facebook Community", "url": "https://www.facebook.com/search/top/?q=" + query.replace(" ","%20"), "type": "Facebook", "source": "Facebook"},
+        {"title": query + " - Free Certificate", "url": "https://www.coursera.org/search?query=" + query.replace(" ","%20"), "type": "Course", "source": "Coursera"},
+        {"title": query + " - Google Search", "url": "https://www.google.com/search?q=" + query.replace(" ","+") + "+free+course", "type": "Google", "source": "Google"},
     ]
     if not groq_client:
         return fallback
     try:
-        prompt = f"For query '{query}', generate 4 related links as JSON array. Each with title, url (realistic youtube/facebook/coursera/google link), type (YouTube/Facebook/Course/Google/News), source. Return ONLY JSON array, no explanation. Example: [{{"title":"...","url":"https://...","type":"YouTube","source":"YouTube"}}]"
+        prompt_text = "Generate 4 related links for: " + query + ". Return JSON array with title, url, type, source. Only JSON."
         resp = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role":"system","content":"You generate related links JSON only."},{"role":"user","content":prompt}],
+            messages=[{"role":"system","content":"You generate JSON only."},{"role":"user","content":prompt_text}],
             max_tokens=300
         )
         txt = resp.choices[0].message.content
-        # extract JSON
         m = re.search(r'\[.*\]', txt, re.DOTALL)
         if m:
             data = json.loads(m.group(0))
@@ -155,14 +145,14 @@ body{margin:0;font-family:'Google Sans','Segoe UI',Roboto,Arial,sans-serif;backg
 @keyframes guideFloat{0%{transform:translateY(0) translateX(0) rotate(0deg)}25%{transform:translateY(-4px) translateX(1px) rotate(0.5deg)}50%{transform:translateY(-7px) translateX(0) rotate(0deg)}75%{transform:translateY(-3px) translateX(-1px) rotate(-0.5deg)}100%{transform:translateY(0) translateX(0) rotate(0deg)}}
 @keyframes blinkEffect{0%,88%,92%,100%{transform:translateY(0) scaleY(1)}90%{transform:translateY(1px) scaleY(0.08)}}
 .search-center{flex:1;max-width:640px;text-align:center;padding-bottom:15px}
-.google-title{font-size:22px;font-weight:400;color:#202124;margin:0 0 14px;letter-spacing:0.2px}
-.search-row{display:flex;align-items:center;justify-content:center;gap:10px;position:relative}
-.search-box{width:100%;max-width:560px;padding:14px 48px 14px 22px;border-radius:28px;border:1px solid #dfe1e5;font-size:16px;outline:none;box-shadow:0 1px 6px rgba(32,33,36,0.08);transition:box-shadow 0.2s}
+.google-title{font-size:22px;font-weight:400;color:#202124;margin:0 0 14px}
+.search-row{display:flex;align-items:center;justify-content:center;gap:10px}
+.search-box{width:100%;max-width:560px;padding:14px 48px 14px 22px;border-radius:28px;border:1px solid #dfe1e5;font-size:16px;outline:none;box-shadow:0 1px 6px rgba(32,33,36,0.08)}
 .search-box:hover{box-shadow:0 2px 8px rgba(32,33,36,0.16)}
 .search-box:focus{box-shadow:0 2px 8px rgba(32,33,36,0.22);border-color:transparent}
-.btn-search{padding:0 24px;height:42px;border-radius:22px;background:#1a73e8;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,0.1)}
+.btn-search{padding:0 24px;height:42px;border-radius:22px;background:#1a73e8;color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:500}
 .btn-search:hover{background:#1765cc}
-.btn-mic{width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #dfe1e5;color:#5f6368;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.08)}
+.btn-mic{width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #dfe1e5;color:#5f6368;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .btn-mic:hover{background:#f8f9fa}
 .main-container{display:flex;max-width:1250px;margin:0 auto;padding:20px;gap:28px;align-items:flex-start}
 .left-panel{flex:1;min-width:0}
@@ -170,8 +160,6 @@ body{margin:0;font-family:'Google Sans','Segoe UI',Roboto,Arial,sans-serif;backg
 .ai-overview{font-size:13px;color:#5f6368;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .ai-overview::before{content:"✦";color:#8ab4f8;font-size:14px}
 .reply-card{background:#fff;border:1px solid #e8eaed;border-radius:12px;padding:22px 24px;line-height:1.65;font-size:15px;color:#202124;min-height:90px}
-.reply-card h3{margin:18px 0 10px;font-size:16px}
-.reply-card ul{margin:8px 0 12px 18px}
 .course-card{margin-top:18px;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;background:#fff}
 .course-header{padding:16px 20px;background:#f8f9fa;border-bottom:1px solid #e8eaed;font-weight:600}
 .course-body{padding:16px 20px}
@@ -181,14 +169,12 @@ body{margin:0;font-family:'Google Sans','Segoe UI',Roboto,Arial,sans-serif;backg
 .ask-box input{flex:1;border:none;outline:none;font-size:15px;padding:6px}
 .ask-box button{border:none;background:none;font-size:18px;cursor:pointer;color:#5f6368}
 .romantic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
-.romantic-grid img{width:100%;height:140px;object-fit:cover;border-radius:10px;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:transform 0.3s}
-.romantic-grid img:hover{transform:translateY(-4px)}
+.romantic-grid img{width:100%;height:140px;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 .right-card{border:1px solid #e8eaed;border-radius:12px;padding:14px 16px;margin-bottom:14px;background:#fff}
 .right-card-title{font-size:13px;color:#5f6368;margin-bottom:10px;display:flex;justify-content:space-between}
 .right-link{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f1f3f4;cursor:pointer}
 .right-link:last-child{border:none}
 .right-link:hover{background:#f8f9fa;border-radius:8px}
-.right-link img{width:92px;height:52px;object-fit:cover;border-radius:8px;background:#eee;flex-shrink:0}
 .right-link-text{flex:1;min-width:0}
 .right-link-text b{font-size:13px;color:#1a0dab;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .right-link-text span{font-size:12px;color:#4d5156;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -210,7 +196,6 @@ body{margin:0;font-family:'Google Sans','Segoe UI',Roboto,Arial,sans-serif;backg
 </div>
 </div>
 </div>
-
 <div class="main-container">
 <div class="left-panel">
 <div class="ai-overview">AI Overview</div>
@@ -225,10 +210,9 @@ body{margin:0;font-family:'Google Sans','Segoe UI',Roboto,Arial,sans-serif;backg
 <button onclick="startVoice()">🎤</button>
 </div>
 </div>
-
 <div class="right-panel" id="rightPanel">
 <div class="right-card">
-<div class="right-card-title"><span>Extended Links</span><span style="cursor:pointer">⋮</span></div>
+<div class="right-card-title"><span>Extended Links</span><span>⋮</span></div>
 <div id="rightLinks">Search to see related YouTube, Facebook, Course, Google links here - Dynamic by Groq.</div>
 </div>
 <div class="right-card">
@@ -241,9 +225,7 @@ Aria is Personal AI Agent like Muse AI - Agentic Task Execution, Always Learning
 </div>
 </div>
 </div>
-
-<div class="footer">Created by Mahmudul Hasan | Aria Super Brain V3 - Google Style + Muse Hybrid</div>
-
+<div class="footer">Created by Mahmudul Hasan | Aria Super Brain V3.1 - Google Style + Muse Hybrid</div>
 <script>
 async function doSearch(){
   const q = document.getElementById('searchInput').value || document.getElementById('askAny').value;
@@ -255,15 +237,8 @@ async function doSearch(){
   try{
     const res = await fetch('/chat?q='+encodeURIComponent(q));
     const data = await res.json();
-    // Left Reply
-    let html = data.reply.replace(/\n/g,'<br>');
-    // Format bullets if contains Key Benefits
-    if(html.includes('•') || html.includes('- ')){
-      html = html.replace(/•/g,'<br>•');
-    }
+    let html = data.reply.replace(/\\n/g,'<br>');
     document.getElementById('replyCard').innerHTML = html + '<div style="margin-top:12px;font-size:11px;color:#70757a">[Mood: '+data.mood+']</div>';
-
-    // Course Card for study mood
     const courseDiv = document.getElementById('courseCard');
     if(data.mood==='study' && data.course){
       courseDiv.style.display='block';
@@ -271,30 +246,23 @@ async function doSearch(){
     } else {
       courseDiv.style.display='none';
     }
-
-    // Romantic Grid
     const romantic = document.getElementById('romanticGrid');
     if(data.mood==='romantic'){
       romantic.style.display='grid';
     } else {
       romantic.style.display='none';
     }
-
-    // Right Panel Links
     let rightHtml = '';
     if(data.related_links && data.related_links.length>0){
       data.related_links.forEach(link=>{
         const icon = link.type==='YouTube' ? '▶️' : link.type==='Facebook' ? '📘' : link.type==='Course' ? '🎓' : '🔗';
-        rightHtml += '<div class="right-link" onclick="window.open(\''+link.url+'\',\'_blank\')"><div style="width:92px;height:52px;background:#f1f3f4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px">'+icon+'</div><div class="right-link-text"><b>'+link.title+'</b><span>'+link.source+' - '+link.type+'</span></div></div>';
+        rightHtml += '<div class="right-link" onclick="window.open(\\''+link.url+'\\',\\'_blank\\')"><div style="width:92px;height:52px;background:#f1f3f4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px">'+icon+'</div><div class="right-link-text"><b>'+link.title+'</b><span>'+link.source+' - '+link.type+'</span></div></div>';
       });
     }
     document.getElementById('rightLinks').innerHTML = rightHtml || 'No links';
-
-    // Avatar animation on talk
     const avatar = document.getElementById('ariaAvatar');
     avatar.style.animation = 'guideFloat 0.5s ease-in-out 3, blinkEffect 4.5s infinite';
     setTimeout(()=>{avatar.style.animation='guideFloat 4s ease-in-out infinite, blinkEffect 4.5s infinite';},1500);
-
   }catch(e){
     document.getElementById('replyCard').innerHTML='Error: '+e;
   }
@@ -322,15 +290,10 @@ def chat(q: str = Query(...)):
     if mood == "study":
         course_data = {
             "topic": q,
-            "bangla_easy": f"{q} - এটি শেখা খুব সহজ, যেমন মুদির দোকানে হিসাব রাখার মতো - Bangladesh example",
-            "quiz": [{"q": f"{q} এর মূল ধারণা কি?", "options": ["A","B","C"], "ans": "A"}],
-            "certificate_guide": f"Free certificate: Coursera audit / Google Skillshop + LinkedIn draft: 'I completed {q} course'"
+            "bangla_easy": q + " - Eti shekha shohoj, mudir dokane hisab rakhar moto.",
+            "quiz": [{"q": q + " er mul dharona ki?", "options": ["A","B","C"], "ans": "A"}],
+            "certificate_guide": "Free certificate: Coursera audit / Google Skillshop + LinkedIn draft: I completed " + q + " course"
         }
-        if supabase:
-            try:
-                supabase.table("aria_memory").insert({"query": f"skill:{q}", "mood": "study", "reply": json.dumps(course_data)}).execute()
-            except:
-                pass
     return {
         "query": q,
         "mood": mood,
@@ -338,8 +301,7 @@ def chat(q: str = Query(...)):
         "image": FORMAL_IMAGE,
         "related_links": related,
         "course": course_data,
-        "muse_hybrid": True,
-        "formal_logo": FORMAL_IMAGE
+        "muse_hybrid": True
     }
 
 @app.get("/course")
@@ -350,11 +312,11 @@ def course_api(topic: str = "", url: str = ""):
 @app.get("/suggest")
 def suggest():
     return {"next_3_months": [
-        {"title": "Python for Beginners - Bangladesh", "why": "Mudir dokan hisab to automation", "bangla": "পাইথন শেখা মুদির দোকানের হিসাবের মতো সহজ"},
-        {"title": "Digital Marketing - Facebook", "why": "Business for Bangladesh"},
-        {"title": "English to Bangla Translator AI", "why": "Your translator skill"},
-        {"title": "Supabase + Render Fullstack", "why": "Your Aria project"},
-        {"title": "LinkedIn Content Creator", "why": "Your LinkedIn skill"}
+        {"title": "Python for Beginners - Bangladesh", "why": "Mudir dokan hisab"},
+        {"title": "Digital Marketing - Facebook", "why": "Business"},
+        {"title": "English to Bangla Translator AI", "why": "Translator skill"},
+        {"title": "Supabase + Render Fullstack", "why": "Aria project"},
+        {"title": "LinkedIn Content Creator", "why": "LinkedIn skill"}
     ]}
 
 @app.get("/memory")
@@ -369,4 +331,4 @@ def memory():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "3.0 Google Style", "supabase_connected": bool(supabase), "groq_connected": bool(groq_client), "muse_hybrid": True, "features": ["Google Style 2 Column", "CSS Blink+Wave Avatar No Circle", "Groq Related Links", "Coursera Card", "White Mic"]}
+    return {"status": "ok", "version": "3.1 Google Style Fixed", "supabase_connected": bool(supabase), "groq_connected": bool(groq_client), "muse_hybrid": True}
