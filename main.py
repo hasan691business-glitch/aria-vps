@@ -2,6 +2,8 @@
 # Features: Full Standing Avatar No Circle, Google 2 Column, Groq Related Links, Muse Hybrid Brain, Coursera Card, White Mic, No Raw Links
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import pathlib
 import os, json, random, datetime, re
 
 try:
@@ -12,6 +14,21 @@ except:
     create_client = None
 
 app = FastAPI(title="Aria - Personal AI Agent", version="3.0")
+
+# Mount gallery static - Fix 404
+try:
+    gallery_path = pathlib.Path(__file__).parent / "gallery"
+    if gallery_path.exists():
+        app.mount("/gallery", StaticFiles(directory=str(gallery_path)), name="gallery")
+    else:
+        # Try alternative path
+        app.mount("/gallery", StaticFiles(directory="gallery"), name="gallery")
+except Exception as e:
+    print(f"Gallery mount error: {e}")
+    try:
+        app.mount("/gallery", StaticFiles(directory="gallery"), name="gallery")
+    except:
+        pass
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vbsnpcgfgacqsnneolmb.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "sb_publishable_-XWxBrJ9MoP0PF2Vv0i14Q_izm5TPe3")
