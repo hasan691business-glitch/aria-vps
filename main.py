@@ -1,305 +1,228 @@
+
 import os
-from fastapi import FastAPI, Request
+from typing import List, Dict
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import pathlib
+from pydantic import BaseModel
 
 app = FastAPI()
 
-# Load base64 avatars (trimmed for size - using 2 poses for V15 light)
-try:
-    base_b64 = pathlib.Path("/mnt/data/image_20261105_125059_b64.txt").read_text()[:200000]  # trim
-    wave_b64 = pathlib.Path("/mnt/data/image_20261105_125114_b64.txt").read_text()[:200000]
-    tilt_b64 = pathlib.Path("/mnt/data/image_20261105_125110_b64.txt").read_text()[:200000]
-except:
-    base_b64 = ""
-    wave_b64 = ""
-    tilt_b64 = ""
+GROQ_API_KEY = os.getenv("GROQ_API_KEY","")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY","")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY","")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY","")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN","")
 
-HTML_PAGE = f"""
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aria + পার্সোনাল এআই এজেন্ট - V15 Final</title>
-<style>
-*{{margin:0;padding:0;box-sizing:border-box;font-family:'Google Sans',Roboto,Arial,sans-serif}}
-body{{background:#F8F9FA;color:#202124;overflow-x:hidden}}
-/* Top */
-.topbar{{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:white;border-bottom:1px solid #E8EAED;position:sticky;top:0;z-index:50}}
-.searchBox{{flex:1;max-width:600px;margin:0 20px;position:relative}}
-.searchBox input{{width:100%;padding:12px 16px 12px 44px;border-radius:24px;border:1px solid #DFE1E5;background:#F1F3F4;font-size:15px;outline:none}}
-.searchBox input:focus{{background:white;box-shadow:0 1px 6px rgba(32,33,36,.28);border-color:transparent}}
-.searchIcon{{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#5F6368}}
-.topIcons{{display:flex;gap:16px;align-items:center}}
-.iconBadge{{background:#FEF7E0;padding:6px 10px;border-radius:16px;font-size:13px;font-weight:500}}
-/* Layout */
-.layout{{display:flex;min-height:100vh}}
-.leftbar{{width:240px;background:white;border-right:1px solid #E8EAED;padding:16px 12px;display:flex;flex-direction:column;justify-content:space-between}}
-.navItem{{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;color:#5F6368;font-size:14px;margin:2px 0}}
-.navItem.active{{background:#E8F0FE;color:#1967D2;font-weight:500}}
-.navItem:hover{{background:#F1F3F4}}
-.navSection{{font-size:11px;color:#5F6368;margin:16px 0 4px 12px;letter-spacing:0.8px}}
-.upgradeCard{{background:linear-gradient(135deg,#E8F0FE,#F3E8FD);border-radius:12px;padding:12px;margin-top:12px}}
-.profile{{display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid #E8EAED;margin-top:12px}}
-.profileImg{{width:32px;height:32px;border-radius:50%;background:#ddd;object-fit:cover}}
-.center{{flex:1;padding:20px 24px;max-width:900px}}
-.hero{{background:linear-gradient(135deg,#E8F0FE 0%,#FFFFFF 100%);border-radius:24px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)}}
-.heroText h1{{font-size:22px;font-weight:400;margin-bottom:6px}}
-.heroText p{{color:#5F6368;font-size:14px;margin-bottom:16px}}
-.btnPrimary{{background:#1A73E8;color:white;border:none;padding:10px 20px;border-radius:20px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}}
-.btnPrimary:hover{{background:#1765CC}}
-.heroAvatar{{width:280px;height:380px;position:relative;flex-shrink:0}}
-.heroAvatar img{{width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;transition:opacity 0.3s ease;filter:drop-shadow(0 12px 20px rgba(0,0,0,0.15))}}
-#imgA{{opacity:1;z-index:2}}
-#imgB{{opacity:0;z-index:1}}
-.breathe{{animation:breathe 4s infinite ease-in-out}}
-@keyframes breathe{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.015)}}}}
-.section{{margin-top:24px}}
-.sectionTitle{{font-size:16px;font-weight:500;margin-bottom:12px}}
-.card{{background:white;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #E8EAED}}
-.progressBar{{height:6px;background:#E8EAED;border-radius:3px;overflow:hidden;margin:8px 0}}
-.progressFill{{height:100%;background:#1A73E8;width:60%}}
-.skillsGrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}}
-.skillCard{{padding:14px;border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;border:1px solid transparent}}
-.skillCard:hover{{border-color:#DADCE0}}
-.skillIcon{{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}}
-.rightbar{{width:300px;padding:20px 16px;background:#F8F9FA}}
-.goalCircle{{width:80px;height:80px;border-radius:50%;background:conic-gradient(#1A73E8 75%,#E8EAED 0);display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}}
-.goalInner{{width:60px;height:60px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500}}
-.dayChecks{{display:flex;gap:8px;justify-content:center;margin:12px 0}}
-.day{{width:28px;height:28px;border-radius:50%;background:#E8F0FE;display:flex;align-items:center;justify-content:center;font-size:12px}}
-.day.done{{background:#CEEAD6;color:#137333}}
-.footer{{text-align:center;padding:16px;font-size:12px;color:#5F6368;display:flex;align-items:center;justify-content:center;gap:8px;border-top:1px solid #E8EAED;margin-top:24px;background:white}}
-.footerImg{{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #E8EAED}}
-#chatArea{{margin-top:16px}}
-.msg{{padding:12px;border-radius:16px;margin:8px 0;max-width:85%}}
-.userMsg{{background:#E8F0FE;margin-left:auto}}
-.aiMsg{{background:white;border:1px solid #E8EAED}}
-@media(max-width:1100px){{.leftbar,.rightbar{{display:none}}.hero{{flex-direction:column}}.heroAvatar{{width:220px;height:300px}}}}
-</style>
-</head>
-<body>
-<div class="topbar">
-<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:500;color:#1A73E8">Aria</span><span style="color:#5F6368;font-size:14px">পার্সোনাল এআই এজেন্ট</span></div>
-<div class="searchBox"><span class="searchIcon">🔍</span><input id="searchInput" placeholder="Search skills, courses, Google, Nvidia, Claude..." onkeypress="if(event.key==='Enter') doSearch()"></div>
-<div class="topIcons"><span class="iconBadge">🔥 7 Day</span><span class="iconBadge">📚 3 Courses</span><button id="btnMic" style="width:40px;height:40px;border-radius:50%;border:none;background:conic-gradient(from 0deg,#FBBC05,#EA4335,#34A853,#4285F4,#FBBC05);color:white;cursor:pointer">🎤</button></div>
-</div>
-<div class="layout">
-<div class="leftbar">
-<div>
-<div class="navItem active">🏠 Home</div>
-<div class="navSection">LEARN</div>
-<div class="navItem" onclick="openCourse()">📚 Course Hunter - Universal</div>
-<div class="navItem">🌐 Translator+TTS</div>
-<div class="navItem">🏆 Quiz Certificate</div>
-<div class="navSection">PROGRESS</div>
-<div class="navItem">🧠 Knowledge Graph</div>
-<div class="navItem">📓 Decision Journal</div>
-<div class="navItem">📅 Life OS</div>
-<div class="navSection">BUSINESS</div>
-<div class="navItem">💼 Business Decision Engine</div>
-<div class="navItem">💰 Cashflow OS</div>
-<div class="navItem">🔗 Finance Bridge</div>
-<div class="navItem">📊 Scenario Planning</div>
-<div class="navSection">LIBRARY</div>
-<div class="navItem">🕰️ Memory Timeline</div>
-<div class="navItem">🔒 Vault Master</div>
-</div>
-<div>
-<div class="upgradeCard"><b>Aria Plus</b><div style="font-size:12px;color:#5F6368;margin:4px 0">Unlock unlimited courses & knowledge graph</div><button class="btnPrimary" style="padding:6px 12px;font-size:12px">Upgrade</button></div>
-<div class="profile"><img class="profileImg" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/" alt="Mahmudul"><div><div style="font-size:13px;font-weight:500">Mahmudul Hasan</div><div style="font-size:11px;color:#5F6368">Level 12 • Creator</div></div></div>
-</div>
-</div>
-<div class="center">
-<div class="hero" id="heroCard">
-<div class="heroText">
-<h1 id="greeting">Good morning, Mahmudul! 👋</h1>
-<p>One skill closer to your future! Continue your journey with Aria.</p>
-<button class="btnPrimary" onclick="openCourse()">Continue Learning <span>→</span></button>
-<div id="chatArea"></div>
-</div>
-<div class="heroAvatar breathe" id="avatarWrapper">
-<img id="imgA" src="{base_b64 if base_b64 else ''}" alt="Aria Avatar">
-<img id="imgB" src="" alt="">
-</div>
-</div>
-<div class="section">
-<div class="sectionTitle">Continue Learning</div>
-<div class="card" style="display:flex;gap:16px;align-items:center">
-<img src="https://via.placeholder.com/80x60/E8F0FE/1967D2?text=AI" style="width:80px;height:60px;border-radius:8px;object-fit:cover">
-<div style="flex:1"><div style="font-weight:500">Google AI Essentials - Unit 2 Lesson 3</div><div style="font-size:12px;color:#5F6368">Digital Dominance - সহজ বাংলায়</div><div class="progressBar"><div class="progressFill"></div></div><div style="font-size:11px;color:#5F6368">60% • 2/5 modules</div></div>
-<button class="btnPrimary" onclick="openCourse()">Start</button>
-</div>
-</div>
-<div class="section">
-<div class="sectionTitle">Build Your Skills</div>
-<div class="skillsGrid">
-<div class="skillCard" style="background:#F3E8FD"><div class="skillIcon" style="background:#E9D2FD">💼</div><div><div style="font-weight:500">Business Decision</div><div style="font-size:12px;color:#5F6368">12 lessons</div></div></div>
-<div class="skillCard" style="background:#FCE8E6"><div class="skillIcon" style="background:#F9DEDC">💰</div><div><div style="font-weight:500">Finance OS</div><div style="font-size:12px;color:#5F6368">10 lessons</div></div></div>
-<div class="skillCard" style="background:#E6F4EA"><div class="skillIcon" style="background:#CEEAD6">🧠</div><div><div style="font-weight:500">Deep Work</div><div style="font-size:12px;color:#5F6368">24 lessons</div></div></div>
-<div class="skillCard" style="background:#FEF7E0"><div class="skillIcon" style="background:#FEEFC3">🌱</div><div><div style="font-weight:500">Personal Growth</div><div style="font-size:12px;color:#5F6368">18 lessons</div></div></div>
-</div>
-</div>
-<div class="section">
-<div class="sectionTitle">Popular Courses - Free</div>
-<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">
-<div class="card" style="min-width:140px;text-align:center"><div>🔍</div><div style="font-weight:500;font-size:13px">Google</div><div style="font-size:11px;color:#5F6368">4.9 ★</div></div>
-<div class="card" style="min-width:140px;text-align:center"><div>💚</div><div style="font-weight:500;font-size:13px">Nvidia DLI</div><div style="font-size:11px;color:#5F6368">4.8 ★</div></div>
-<div class="card" style="min-width:140px;text-align:center"><div>🤖</div><div style="font-weight:500;font-size:13px">Claude Docs</div><div style="font-size:11px;color:#5F6368">4.9 ★</div></div>
-<div class="card" style="min-width:140px;text-align:center"><div>🎓</div><div style="font-weight:500;font-size:13px">Coursera</div><div style="font-size:11px;color:#5F6368">4.8 ★</div></div>
-<div class="card" style="min-width:140px;text-align:center"><div>▶️</div><div style="font-weight:500;font-size:13px">YouTube</div><div style="font-size:11px;color:#5F6368">4.8 ★</div></div>
-</div>
-</div>
-</div>
-<div class="rightbar">
-<div class="card" style="text-align:center">
-<div style="font-weight:500;margin-bottom:12px">Your Daily Goal</div>
-<div class="goalCircle"><div class="goalInner">15/20</div></div>
-<div style="font-size:12px;color:#5F6368;margin-top:8px">15/20 min Today</div>
-<div class="dayChecks"><span class="day done">✓</span><span class="day done">✓</span><span class="day done">✓</span><span class="day done">✓</span><span class="day">F</span></div>
-</div>
-<div class="card" style="margin-top:12px">
-<div style="font-weight:500;font-size:14px">Decision Journal</div><div style="font-size:12px;color:#5F6368;margin:6px 0">Hit Rate 78% • 12 decisions logged</div><div class="progressBar"><div class="progressFill" style="width:78%"></div></div>
-</div>
-<div class="card" style="margin-top:12px">
-<div style="font-weight:500;font-size:14px">Knowledge Graph</div><div style="font-size:11px;color:#5F6368;margin:6px 0">Google • Nvidia • Claude • Business</div><div style="display:flex;gap:4px;flex-wrap:wrap"><span style="background:#E8F0FE;padding:4px 8px;border-radius:12px;font-size:11px">AI Essentials</span><span style="background:#F3E8FD;padding:4px 8px;border-radius:12px;font-size:11px">Business</span></div>
-</div>
-<div class="card" style="margin-top:12px;background:#FEF7E0;border:1px dashed #F6BF26">
-<div style="font-size:13px">🎁 Complete 2 more modules to unlock Certificate</div><div class="progressBar" style="margin-top:8px"><div class="progressFill" style="width:60%;background:#FBBC05"></div></div><div style="font-size:11px;color:#5F6368;margin-top:4px">3/5</div>
-</div>
-</div>
-</div>
-<div class="footer">Created by Mahmudul Hasan | Aria Super Brain V15 - Clean White - Formal Avatar <button id="btnBrain" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer">🧠</button><button id="btnCourse" style="width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer">📚</button><button id="btnDoodle" style="width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer">🎨</button></div>
+chat_history: List[Dict] = []
+chat_summary = ""
 
-<!-- Course Overlay -->
-<div id="courseOverlay" style="display:none;position:fixed;inset:0;background:white;z-index:100;overflow-y:auto;padding:24px">
-<div style="max-width:800px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center"><h2>📚 Course Mode - Universal Parser</h2><button onclick="closeCourse()" style="padding:8px 16px;border-radius:20px;border:1px solid #DADCE0;background:white;cursor:pointer">✕ Close</button></div>
-<div style="margin:20px 0"><input id="courseLink" placeholder="Paste any link: grow.google, learn.nvidia.com, claude.ai/docs, youtube.com, coursera.org" style="width:100%;padding:14px;border-radius:12px;border:1px solid #DADCE0"><button onclick="parseCourse()" class="btnPrimary" style="margin-top:12px">Generate 5 Modules - সহজ বাংলায়</button></div>
-<div id="courseResult"></div>
-</div>
-</div>
+def get_last_4_plus_summary():
+    global chat_history, chat_summary
+    last_4 = chat_history[-4:] if len(chat_history)>4 else chat_history
+    if len(chat_history)>4:
+        chat_summary = " | ".join([f"{h['role']}: {h['content'][:60]}" for h in chat_history[:-4]])
+    return last_4, chat_summary
 
-<script>
-let avatarState='idle';
-const frames={{
-  base: `{base_b64 if base_b64 else ''}`,
-  waveLow: `{wave_b64 if wave_b64 else ''}`,
-  waveHigh: `{wave_b64 if wave_b64 else ''}`,
-  tilt: `{tilt_b64 if tilt_b64 else ''}`
-}};
+async def call_groq_8b(messages):
+    try:
+        from groq import Groq
+        c=Groq(api_key=GROQ_API_KEY)
+        r=c.chat.completions.create(model="llama-3.1-8b-instant", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "groq-8b"
+    except Exception as e:
+        return None, str(e)
 
-let imgA=document.getElementById('imgA');
-let imgB=document.getElementById('imgB');
-let currentSrc=frames.base;
-let isCrossfading=false;
+async def call_chatgpt_free(messages):
+    try:
+        from openai import OpenAI
+        c=OpenAI(api_key=OPENAI_API_KEY)
+        r=c.chat.completions.create(model="gpt-4o-mini", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "chatgpt-free"
+    except Exception as e:
+        return None, str(e)
 
-function crossfadeTo(newSrc, duration=300){{
-  if(isCrossfading || !newSrc) return;
-  isCrossfading=true;
-  imgB.src=newSrc;
-  imgB.style.transition=`opacity ${{duration}}ms ease-out`;
-  imgB.style.opacity='1';
-  setTimeout(()=>{{
-    imgA.src=newSrc;
-    imgB.style.opacity='0';
-    currentSrc=newSrc;
-    isCrossfading=false;
-  }}, duration);
-}}
+async def call_github_models_free(messages):
+    try:
+        from openai import OpenAI
+        c=OpenAI(base_url="https://models.github.ai/inference", api_key=GITHUB_TOKEN)
+        r=c.chat.completions.create(model="gpt-4o-mini", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "github-models-free"
+    except Exception as e:
+        return None, str(e)
 
-function setAvatarState(newState){{
-  avatarState=newState;
-  console.log('Avatar State:', newState);
-  if(newState==='idle'){{
-    crossfadeTo(frames.base, 300);
-  }} else if(newState==='waving'){{
-    crossfadeTo(frames.waveLow, 200);
-    setTimeout(()=>crossfadeTo(frames.waveHigh, 200), 400);
-    setTimeout(()=>crossfadeTo(frames.waveLow, 200), 800);
-    setTimeout(()=>crossfadeTo(frames.base, 300), 1200);
-  }} else if(newState==='explaining'){{
-    crossfadeTo(frames.waveLow, 250);
-    setTimeout(()=>crossfadeTo(frames.tilt, 300), 500);
-  }} else if(newState==='romantic'){{
-    crossfadeTo(frames.tilt, 400);
-  }} else if(newState==='thinking'){{
-    crossfadeTo(frames.tilt, 500);
-  }}
-  // Auto return to idle after 3s
-  if(newState!=='idle'){{
-    setTimeout(()=>{{ avatarState='idle'; crossfadeTo(frames.base, 400); }}, 3000);
-  }}
-}}
+async def call_openrouter_free(messages):
+    try:
+        from openai import OpenAI
+        c=OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENROUTER_API_KEY)
+        r=c.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct:free", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "openrouter-free"
+    except Exception as e:
+        return None, str(e)
 
-// Idle breathing only - subtle
-setInterval(()=>{{
-  if(avatarState==='idle' && Math.random()<0.15){{
-    // occasional blink via opacity
-    imgA.style.filter='brightness(0.96)';
-    setTimeout(()=>imgA.style.filter='brightness(1)', 150);
-  }}
-}}, 1000);
+async def call_claude_haiku_free(messages):
+    try:
+        from openai import OpenAI
+        c=OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENROUTER_API_KEY)
+        r=c.chat.completions.create(model="anthropic/claude-3-haiku:free", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "claude-haiku-free"
+    except Exception as e:
+        return None, str(e)
 
-function doSearch(){{
-  const q=document.getElementById('searchInput').value.toLowerCase();
-  if(!q) return;
-  // Detect mood
-  if(q.includes('miss you')||q.includes('love you')||q.includes('মনে পড়ছে')){{
-    setAvatarState('romantic');
-  }} else if(q.includes('brief')||q.includes('সংক্ষেপে')||q.includes('সহজ')){{
-    setAvatarState('explaining');
-  }} else if(q.includes('course')||q.includes('google')||q.includes('nvidia')||q.includes('claude')||q.includes('শিখতে')){{
-    setAvatarState('waving');
-  }} else {{
-    setAvatarState('explaining');
-  }}
-  // Add to chat
-  const area=document.getElementById('chatArea');
-  area.innerHTML+=`<div class="msg userMsg">${{q}}</div><div class="msg aiMsg">Aria বুঝেছে: "${{q}}" - সহজ বাংলায় উত্তর দিচ্ছি... (Hexa Brain: Groq + ChatGPT + GitHub + OpenRouter + Claude + Gemini)</div>`;
-}}
+async def call_gemini_free(messages):
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=GOOGLE_API_KEY)
+        m=genai.GenerativeModel("gemini-1.5-flash")
+        p="\n".join([f"{x['role']}: {x['content']}" for x in messages[-4:]])
+        r=m.generate_content(p)
+        return r.text, "gemini-flash-free"
+    except Exception as e:
+        return None, str(e)
 
-function openCourse(){{ document.getElementById('courseOverlay').style.display='block'; setAvatarState('waving'); }}
-function closeCourse(){{ document.getElementById('courseOverlay').style.display='none'; setAvatarState('idle'); }}
+async def call_groq_70b(messages):
+    try:
+        from groq import Groq
+        c=Groq(api_key=GROQ_API_KEY)
+        r=c.chat.completions.create(model="llama-3.1-70b-versatile", messages=messages, max_tokens=800)
+        return r.choices[0].message.content, "groq-70b"
+    except Exception as e:
+        return None, str(e)
 
-function parseCourse(){{
-  const link=document.getElementById('courseLink').value;
-  if(!link) return alert('লিংক দাও');
-  setAvatarState('explaining');
-  const res=document.getElementById('courseResult');
-  res.innerHTML=`<div class="card"><b>🔍 ${{link}} থেকে Content তুলছি... (Groq + Gemini + Claude Haiku Free)</b><div style="margin-top:12px">✅ 5 Modules Generated - সহজ বাংলায় (মুদির দোকান বাদ)</div><div style="margin-top:12px"><div style="padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0">Module 1: Digital Dominance - ডিজিটাল মানে অনলাইনে বেশি মানুষের কাছে পৌঁছানো</div><div style="padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0">Module 2: Customer Journey - কাস্টমার কিভাবে তোমাকে খুঁজে পায়</div><div style="padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0">Module 3: Content Strategy - সহজ ভাষায় কনটেন্ট বানানো</div><div style="padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0">Module 4: Data & Analytics - ডাটা দেখে সিদ্ধান্ত</div><div style="padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0">Module 5: Growth Hack - দ্রুত বড় হওয়ার টিপস</div></div><button class="btnPrimary" style="margin-top:12px">📝 Quiz Start (3 MCQ) + 📜 Certificate</button></div>`;
-  setTimeout(()=>setAvatarState('idle'), 2000);
-}}
+async def call_hexa_brain(user_query: str):
+    last_4, summary = get_last_4_plus_summary()
+    system_prompt = f"You are Aria for Mahmudul. Bangla Class 8 simple mobile/Facebook/YouTube. Mudir Dokan removed unless business. Summary: {summary}"
+    messages=[{"role":"system","content":system_prompt}]
+    messages.extend(last_4)
+    messages.append({"role":"user","content":user_query})
+    for func in [call_groq_8b, call_chatgpt_free, call_github_models_free, call_openrouter_free, call_claude_haiku_free, call_gemini_free, call_groq_70b]:
+        content, model_name = await func(messages)
+        if content:
+            chat_history.append({"role":"user","content":user_query})
+            chat_history.append({"role":"assistant","content":content})
+            return {"response":content,"model":model_name,"history_len":len(chat_history)}
+    return {"response": f"ভালো আছি Mahmudul! তুমি বললে: {user_query} - আমি Aria, তোমার Personal AI Agent। সহজ বাংলায় বলো, আমি সাহায্য করবো। (Fallback - সব Brain এখন ব্যস্ত, তাই আমি নিজে উত্তর দিচ্ছি)", "model":"aria-fallback"}
 
-// Buttons
-document.getElementById('btnBrain').onclick=()=>{{ alert('🧠 Brain Drawer - 14 Features: Knowledge Graph, Decision Journal, Life OS, Meeting Capture, Multi-Agent Orchestrator, Business Decision Engine, Cashflow OS, Finance Bridge, Scenario Planning, Deep Work, Opportunity Finder, Translator, Voice, Vault - All in Left Sidebar Now'); setAvatarState('explaining'); }};
-document.getElementById('btnMic').onclick=()=>{{ 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRecognition) return alert('Mic not supported');
-  const rec=new SpeechRecognition(); rec.lang='bn-BD'; rec.start();
-  rec.onresult=(e)=>{{ document.getElementById('searchInput').value=e.results[0][0].transcript; doSearch(); }};
-}};
-document.getElementById('btnDoodle').onclick=()=>{{ alert('🎨 Festival Doodle: Feb 21 Bhasha, Mar 26 Independence, Apr 14 Pohela Boishakh, Eid, Durga Puja, Dec 16 Victory, Dec 25 Christmas - Asia/Dhaka'); }};
+class CourseRequest(BaseModel):
+    link: str
 
-// Greeting
-const hour=new Date().getHours();
-let greet='Good morning';
-if(hour>=12 && hour<17) greet='Good afternoon';
-else if(hour>=17) greet='Good evening';
-document.getElementById('greeting').textContent=`${{greet}}, Mahmudul! 👋`;
-</script>
-</body>
-</html>
-"""
+def detect_course_source(link: str) -> str:
+    l=link.lower()
+    if "grow.google" in l or "google" in l: return "Google"
+    if "learn.nvidia" in l or "nvidia" in l: return "Nvidia DLI"
+    if "claude.ai" in l: return "Claude Docs"
+    if "youtube.com" in l or "youtu.be" in l: return "YouTube"
+    if "coursera.org" in l: return "Coursera"
+    return "General"
 
+async def generate_simple_bangla_modules(link: str, source: str):
+    prompt = f"Link: {link} Source: {source} Generate 5 modules simple Bangla Class 8 daily life no Mudir Dokan unless business. Plus Briefing, Study Guide, Audio Script bn-BD, FAQ 3Q"
+    result = await call_hexa_brain(prompt)
+    if "ব্যস্ত" in result["response"]:
+        return {
+            "source": source, "link": link,
+            "modules": [
+                {"title":"Module 1: ডিজিটাল মানে কি? - সহজ ভাষায়","desc":"Facebook এ পোস্ট দিলে অনেক মানুষ দেখে।","video":f"{link} #v1","points":["Facebook Presence","Mobile Start"]},
+                {"title":"Module 2: কাস্টমার কিভাবে খুঁজে পায়?","desc":"Google এ সার্চ দিলে নাম আসবে।","video":f"{link} #v2","points":["Google Search"]},
+                {"title":"Module 3: কনটেন্ট কিভাবে বানাবো?","desc":"Mobile দিয়ে ভিডিও বানাও।","video":f"{link} #v3","points":["Mobile Video"]},
+                {"title":"Module 4: ডাটা দেখে সিদ্ধান্ত","desc":"Views Likes দেখে বুঝবে।","video":f"{link} #v4","points":["Views"]},
+                {"title":"Module 5: দ্রুত বড় হওয়ার টিপস","desc":"প্রতিদিন 1 টা পোস্ট।","video":f"{link} #v5","points":["Daily 1 Post"]},
+            ],
+            "briefing":f"{source} কোর্সের 1 পাতার সারাংশ সহজ বাংলায়।",
+            "study_guide":"প্রতিদিন 1 Module 2 মিনিট।",
+            "audio_script":"হ্যালো আজকে শিখবো সহজ বাংলায়...",
+            "faq":["Q: কতদিনে শেষ? A: 5 দিনে","Q: সার্টিফিকেট? A: 3 MCQ 60%","Q: মুদির দোকান? A: না"],
+            "model_used":"fallback-mock"
+        }
+    else:
+        return {"source":source,"link":link,"modules":[{"title":f"Module from {source}","desc":result["response"][:300],"video":link,"points":["Auto"]}],"briefing":result["response"],"study_guide":"Auto","audio_script":"Auto","faq":[],"model_used":result["model"]}
+
+
+AVATAR_DATA = "data:image/jpeg;base64,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"
+base_b64 = AVATAR_DATA
+wave_b64 = AVATAR_DATA
+tilt_b64 = AVATAR_DATA
+# V15 FINAL per discussion: Aria Avatar Female Illustration Beige Suit + Mahmudul Profile Left Sidebar + Lingora Colorful + Chat Separate Thread Page
+HTML_PAGE = "<!DOCTYPE html><html lang=\"bn\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Aria V15 Lingora Colorful + Chat Thread</title>"
+HTML_PAGE += "<style>"
+HTML_PAGE += "*{margin:0;padding:0;box-sizing:border-box;font-family:Google Sans,Roboto,Arial}body{background:#F8F9FA;color:#202124}"
+HTML_PAGE += ".topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:white;border-bottom:1px solid #E8EAED;position:sticky;top:0;z-index:50;gap:12px}"
+HTML_PAGE += ".searchBox{flex:1;max-width:600px;position:relative}.searchBox input{width:100%;padding:12px 16px 12px 44px;border-radius:24px;border:1px solid #DFE1E5;background:#F1F3F4;font-size:15px;outline:none;cursor:pointer}"
+HTML_PAGE += ".layout{display:flex;min-height:calc(100vh - 60px)}"
+HTML_PAGE += ".leftbar{width:260px;min-width:240px;background:white;border-right:1px solid #E8EAED;padding:14px 10px;display:flex;flex-direction:column;justify-content:space-between;overflow-y:auto;flex-shrink:0}"
+HTML_PAGE += ".navItem{display:flex;gap:8px;padding:10px 10px;border-radius:8px;cursor:pointer;color:#5F6368;font-size:13px;margin:2px 0;line-height:1.4;align-items:flex-start;white-space:normal;word-break:break-word}.navItem.active{background:#E8F0FE;color:#1967D2;font-weight:500}"
+HTML_PAGE += ".navSection{font-size:11px;color:#5F6368;margin:14px 0 4px 10px;letter-spacing:.8px}"
+HTML_PAGE += ".center{flex:1;padding:18px;min-width:0;max-width:900px}"
+HTML_PAGE += ".hero{background:linear-gradient(135deg,#E8F0FE,#FEF7E0,#F3E8FD);border-radius:24px;padding:22px;display:flex;gap:16px;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}"
+HTML_PAGE += ".heroAvatar{width:260px;min-width:220px;height:360px;position:relative;flex-shrink:0;background:linear-gradient(135deg,#E8F0FE,#FFFFFF);border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center}.heroAvatar img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;transition:transform .3s, filter .3s}.breathe{animation:breathe 4s infinite ease-in-out}@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}"
+HTML_PAGE += ".card{background:white;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border:1px solid #E8EAED;margin-top:14px}"
+HTML_PAGE += ".btnPrimary{background:#1A73E8;color:white;border:none;padding:10px 18px;border-radius:20px;font-size:14px;cursor:pointer}"
+HTML_PAGE += ".progressBar{height:6px;background:#E8EAED;border-radius:3px;overflow:hidden;margin:8px 0}.progressFill{height:100%;background:#1A73E8;width:60%}"
+HTML_PAGE += ".skillsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.skillCard{padding:14px;border-radius:12px;display:flex;gap:10px;cursor:pointer}"
+HTML_PAGE += ".rightbar{width:300px;min-width:260px;padding:18px 14px;background:#F8F9FA;flex-shrink:0;overflow-y:auto}.goalCircle{width:80px;height:80px;border-radius:50%;background:conic-gradient(#1A73E8 75%,#E8EAED 0);display:flex;align-items:center;justify-content:center;margin:0 auto}.goalInner{width:60px;height:60px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500}.dayChecks{display:flex;gap:8px;justify-content:center;margin:10px 0}.day{width:28px;height:28px;border-radius:50%;background:#E8F0FE;display:flex;align-items:center;justify-content:center;font-size:12px}.day.done{background:#CEEAD6;color:#137333}"
+HTML_PAGE += ".footer{text-align:center;padding:14px;font-size:12px;color:#5F6368;display:flex;align-items:center;justify-content:center;gap:8px;border-top:1px solid #E8EAED;margin-top:18px;background:white;flex-wrap:wrap}"
+HTML_PAGE += ".chatPage{display:none;position:fixed;inset:0;background:#F8F9FA;z-index:200;flex-direction:column}.chatMain{flex:1;overflow-y:auto;padding:20px;max-width:800px;margin:0 auto;width:100%}.chatMsg{padding:12px 16px;border-radius:16px;margin:10px 0;max-width:85%;font-size:14px;line-height:1.6;word-wrap:break-word}.chatUser{background:#E8F0FE;margin-left:auto}.chatAI{background:white;border:1px solid #E8EAED}.chatInputBar{background:white;border-top:1px solid #E8EAED;padding:14px;max-width:800px;margin:0 auto;width:100%;display:flex;gap:10px}"
+HTML_PAGE += "@media(max-width:1100px){.leftbar,.rightbar{display:none}.hero{flex-direction:column}.heroAvatar{width:220px;height:300px}}"
+HTML_PAGE += "</style></head><body>"
+HTML_PAGE += "<div class=topbar><div style=display:flex;gap:8px;align-items:center><span style=font-weight:500;color:#1A73E8>Aria</span><span style=color:#5F6368;font-size:14px>পার্সোনাল এআই এজেন্ট - V15 Lingora Colorful</span></div>"
+HTML_PAGE += "<div class=searchBox><input id=searchInputTop placeholder=\"Search skills, courses, Google, Nvidia, Claude... - Click to Chat\" onclick=openChatPage() readonly></div>"
+HTML_PAGE += "<div style=display:flex;gap:10px;align-items:center><span style=background:#FEF7E0;padding:6px 10px;border-radius:16px;font-size:13px>🔥 7 Day</span><span style=background:#FEF7E0;padding:6px 10px;border-radius:16px;font-size:13px>📚 3 Courses</span><button id=btnMic style=width:40px;height:40px;border-radius:50%;border:none;background:conic-gradient(from 0deg,#FBBC05,#EA4335,#34A853,#4285F4,#FBBC05);color:white;cursor:pointer>🎤</button></div></div>"
+HTML_PAGE += "<div class=layout>"
+HTML_PAGE += "<div class=leftbar><div><div class=navItem active>🏠 Home - Step 19</div><div class=navSection>LEARN - STEP 12/13/14</div>"
+HTML_PAGE += "<div class=navItem onclick=openCourse()>📚 Course Hunter - Universal Parser<br>Google / Nvidia / Claude / YouTube / Coursera - মুদির দোকান বাদ</div>"
+HTML_PAGE += "<div class=navItem onclick=openChatPage()>💬 Chat - New Thread - Google Style</div><div class=navItem>🌐 Translator+TTS (bn-BD)</div><div class=navItem>🏆 Quiz Certificate (3 MCQ 60%)</div>"
+HTML_PAGE += "<div class=navSection>PROGRESS - STEP 17 1-5 - V16</div><div class=navItem>🧠 Knowledge Graph (V16)</div><div class=navItem>📓 Decision Journal - Hit Rate 78% (V16)</div><div class=navItem>📅 Life OS (V16)</div><div class=navItem>🎙️ Meeting Capture (V16)</div><div class=navItem>🤖 Multi-Agent Orchestrator (V16)</div>"
+HTML_PAGE += "<div class=navSection>BUSINESS - STEP 17 6-13 - V17</div><div class=navItem>💼 Business Decision Engine (V17)</div><div class=navItem>💰 Cashflow OS (V17)</div><div class=navItem>🔗 Finance Bridge (V17)</div><div class=navItem>📊 Scenario Planning (V17)</div><div class=navItem>🧠 Deep Work (V17)</div><div class=navItem>🌱 Opportunity Finder (V17)</div>"
+HTML_PAGE += "<div class=navSection>LIBRARY - STEP 11</div><div class=navItem>🕰️ Memory Timeline - Supabase + Obsidian</div><div class=navItem>🔒 Vault aria123</div><div class=navItem>🎨 Festival Doodle - Feb21 Mar26 Apr14 Eid Durga Puja Dec16 Dec25</div></div>"
+HTML_PAGE += "<div><div style=background:linear-gradient(135deg,#E8F0FE,#F3E8FD);border-radius:12px;padding:12px><b>Aria Plus - Step 11 Hexa Brain</b><div style=font-size:11px;color:#5F6368;margin:4px 0>Groq 8b → ChatGPT Free → GitHub Models → OpenRouter → Claude Haiku → Gemini → Groq 70b | Last 4 + Summary</div></div>"
+HTML_PAGE += "<div style=display:flex;gap:10px;padding:12px;border-top:1px solid #E8EAED;margin-top:12px;align-items:center><div style=width:36px;height:36px;border-radius:50%;background:#0F9D58;color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px> M </div><div><div style=font-size:13px;font-weight:600>Mahmudul Hasan</div><div style=font-size:11px;color:#5F6368>Level 12 • Creator</div></div></div></div></div>"
+HTML_PAGE += "<div class=center>"
+HTML_PAGE += "<div class=hero><div style=flex:1;min-width:0><h1 id=greeting>Good evening, Mahmudul! 👋</h1><p style=color:#5F6368;font-size:14px;margin:8px 0>One skill closer to your future! V15 Lingora Colorful - Step 11 Brain + Step 12/13/14 Course + Step 19 Dashboard + Final Avatar Movement - Hero Clean, Chat Separate Page</p><button class=btnPrimary onclick=openChatPage()>💬 Start Chat →</button> <button class=btnPrimary onclick=openCourse() style=background:#0F9D58>Continue Learning →</button></div>"
+HTML_PAGE += "<div class=heroAvatar breathe><img id=imgA src=\"" + "data:image/jpeg;base64,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" + "\" alt=\"Aria Avatar - Female Illustration Beige Suit\"></div></div>"
+HTML_PAGE += "<div class=card style=border-left:4px solid #1A73E8><b>Continue Learning - Step 12/13/14</b><div style=display:flex;gap:14px;align-items:center;margin-top:10px><div style=width:70px;height:50px;border-radius:8px;background:#E8F0FE;display:flex;align-items:center;justify-content:center>AI</div><div style=flex:1><div style=font-weight:500>Google AI Essentials - Unit 2 Lesson 3 - Digital Dominance - সহজ বাংলায় (মুদির দোকান বাদ)</div><div style=font-size:12px;color:#5F6368>5 Modules - Briefing + Study Guide + Audio bn-BD + FAQ</div><div class=progressBar><div class=progressFill></div></div><div style=font-size:11px;color:#5F6368>60% • 2/5 modules</div></div><button class=btnPrimary onclick=openCourse()>Start</button></div></div>"
+HTML_PAGE += "<div class=card><b>Build Your Skills - Step 17 - Lingora Colorful</b><div class=skillsGrid style=margin-top:10px><div class=skillCard style=background:#F3E8FD><div>💼</div><div><div style=font-weight:500>Business Decision</div><div style=font-size:12px;color:#5F6368>12 lessons • V17 • Purple</div></div></div><div class=skillCard style=background:#FCE8E6><div>💰</div><div><div style=font-weight:500>Finance OS</div><div style=font-size:12px;color:#5F6368>10 lessons • V17 • Red/Pink</div></div></div><div class=skillCard style=background:#E6F4EA><div>🧠</div><div><div style=font-weight:500>Deep Work</div><div style=font-size:12px;color:#5F6368>24 lessons • V17 • Green</div></div></div><div class=skillCard style=background:#FEF7E0><div>🌱</div><div><div style=font-weight:500>Personal Growth</div><div style=font-size:12px;color:#5F6368>18 lessons • V16/V17 • Orange</div></div></div></div></div>"
+HTML_PAGE += "<div class=card><b>Popular Courses - Free - Step 12 Universal Parser - Colorful</b><div style=display:flex;gap:10px;overflow-x:auto;margin-top:10px><div class=card style=min-width:130px;text-align:center;cursor:pointer;margin:0;background:#E8F0FE onclick=openCourseWith(\'https://grow.google\')><div>🔍</div><div style=font-weight:500;font-size:13px>Google</div><div style=font-size:11px;color:#5F6368>grow.google • 4.9 ★ • Blue</div></div><div class=card style=min-width:130px;text-align:center;cursor:pointer;margin:0;background:#E6F4EA onclick=openCourseWith(\'https://learn.nvidia.com\')><div>💚</div><div style=font-weight:500;font-size:13px>Nvidia DLI</div><div style=font-size:11px;color:#5F6368>learn.nvidia.com • 4.8 ★ • Green</div></div><div class=card style=min-width:130px;text-align:center;cursor:pointer;margin:0;background:#FEF7E0 onclick=openCourseWith(\'https://claude.ai/docs\')><div>🤖</div><div style=font-weight:500;font-size:13px>Claude Docs</div><div style=font-size:11px;color:#5F6368>claude.ai/docs • 4.9 ★ • Orange</div></div><div class=card style=min-width:130px;text-align:center;cursor:pointer;margin:0;background:#E8F0FE onclick=openCourseWith(\'https://coursera.org\')><div>🎓</div><div style=font-weight:500;font-size:13px>Coursera</div><div style=font-size:11px;color:#5F6368>coursera.org • 4.8 ★ • Blue</div></div><div class=card style=min-width:130px;text-align:center;cursor:pointer;margin:0;background:#FCE8E6 onclick=openCourseWith(\'https://youtube.com\')><div>▶️</div><div style=font-weight:500;font-size:13px>YouTube</div><div style=font-size:11px;color:#5F6368>youtube.com • 4.8 ★ • Red</div></div></div></div>"
+HTML_PAGE += "</div>"
+HTML_PAGE += "<div class=rightbar><div class=card style=text-align:center;margin:0;background:linear-gradient(135deg,#E8F0FE,#FFFFFF)><div style=font-weight:500>Your Daily Goal - Step 19</div><div class=goalCircle style=margin-top:10px><div class=goalInner>15/20</div></div><div style=font-size:12px;color:#5F6368;margin-top:8px>15/20 min Today</div><div class=dayChecks><span class=day done>✓</span><span class=day done>✓</span><span class=day done>✓</span><span class=day done>✓</span><span class=day>F</span></div></div>"
+HTML_PAGE += "<div class=card><div style=font-weight:500;font-size:14px>Decision Journal - Step 17 V16 - Hit Rate 78%</div><div style=font-size:12px;color:#5F6368;margin:6px 0>12 decisions logged</div><div class=progressBar><div class=progressFill style=width:78%></div></div></div>"
+HTML_PAGE += "<div class=card style=background:#F3E8FD><div style=font-weight:500;font-size:14px>Hexa Brain - Step 11</div><div style=font-size:11px;color:#5F6368;margin:6px 0>Groq 8b → ChatGPT Free → GitHub Models → OpenRouter → Claude Haiku → Gemini → Groq 70b | Last 4 + Summary | Avatar Embedded</div></div>"
+HTML_PAGE += "<div class=card style=background:#FEF7E0;border:1px dashed #F6BF26><div style=font-size:13px>🎁 Complete 2 more modules to unlock Certificate (3 MCQ 60%)</div><div class=progressBar><div class=progressFill style=width:60%;background:#FBBC05></div></div><div style=font-size:11px;color:#5F6368>3/5 • V15 Lingora Colorful</div></div></div></div>"
+HTML_PAGE += "<div class=footer>Created by Mahmudul Hasan | Aria Super Brain V15 Lingora Colorful - Step 11+12+13+19 + Final Avatar Movement + Chat Thread Page - Clean + Colorful <button id=btnBrain style=width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer>🧠</button><button id=btnCourse style=width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer>📚</button><button id=btnDoodle style=width:32px;height:32px;border-radius:50%;border:1px solid #DADCE0;background:white;cursor:pointer>🎨</button></div>"
+HTML_PAGE += "<div id=courseOverlay style=display:none;position:fixed;inset:0;background:white;z-index:100;overflow-y:auto;padding:22px><div style=max-width:800px;margin:0 auto><div style=display:flex;justify-content:space-between;align-items:center><h2>📚 Course Mode - Universal Parser - Step 12/13/14</h2><button onclick=closeCourse() style=padding:8px 16px;border-radius:20px;border:1px solid #DADCE0;background:white;cursor:pointer>✕ Close</button></div><div style=margin:18px 0><input id=courseLink placeholder=\"Paste any link: grow.google, learn.nvidia.com, claude.ai/docs, youtube.com, coursera.org\" style=width:100%;padding:14px;border-radius:12px;border:1px solid #DADCE0><button onclick=parseCourse() class=btnPrimary style=margin-top:12px>Generate 5 Modules - সহজ বাংলায় (মুদির দোকান বাদ) + Briefing + Study Guide + Audio</button></div><div id=courseResult></div></div></div>"
+HTML_PAGE += "<div id=chatPage class=chatPage><div style=background:white;border-bottom:1px solid #E8EAED;padding:12px 20px;display:flex;align-items:center;gap:12px><button onclick=closeChatPage() style=padding:8px 14px;border-radius:20px;border:1px solid #DADCE0;background:white;cursor:pointer>← Dashboard</button><b>Aria Chat - Thread</b><span style=color:#5F6368;font-size:13px>Google Style - Search → Separate Page - History Saved</span><div style=margin-left:auto;display:flex;gap:8px><button onclick=newThread() style=padding:8px 14px;border-radius:20px;background:#1A73E8;color:white;border:none;cursor:pointer>✏️ New thread</button></div></div>"
+HTML_PAGE += "<div style=display:flex;flex:1;overflow:hidden><div style=width:280px;background:white;border-right:1px solid #E8EAED;padding:14px;overflow-y:auto;flex-shrink:0><div style=display:flex;gap:8px><input id=chatSearch placeholder=\"Search threads\" style=flex:1;padding:10px;border-radius:20px;border:1px solid #DFE1E5;background:#F1F3F4><span>⚙️</span></div><div style=margin:14px 0><button onclick=newThread() style=width:100%;padding:10px;border-radius:20px;border:1px solid #DADCE0;background:white;cursor:pointer;text-align:left>✏️ New thread</button></div><div style=font-size:12px;color:#5F6368;margin:10px 0>Notebooks</div><div style=padding:8px;cursor:pointer;border-radius:8px>+ Add notebook</div><div style=padding:8px;cursor:pointer;border-radius:8px>📓 বাচ্চাদের ভিটামিন ডি গ্রি - Sample Notebook</div><div style=font-size:12px;color:#5F6368;margin:14px 0 8px>Recent - History</div><div id=recentList></div></div>"
+HTML_PAGE += "<div style=flex:1;display:flex;flex-direction:column;min-width:0><div id=chatMain class=chatMain><div style=text-align:center;color:#5F6368;padding:20px><div style=font-size:28px>👋</div><div style=font-size:16px;margin:8px 0>Good evening, Mahmudul!</div><div>আমাকে কিছু জিজ্ঞেস করো - সহজ বাংলায় উত্তর দিবো</div></div></div><div class=chatInputBar><input id=chatInput placeholder=\"তুমি কেমন আছো? / সহজ বাংলায় শেখাও...\" style=flex:1;padding:12px;border-radius:24px;border:1px solid #DFE1E5;outline:none onkeypress=\"if(event.key==='Enter') sendChat()\"><button onclick=sendChat() class=btnPrimary>Send →</button><button onclick=startVoice() style=width:40px;height:40px;border-radius:50%;border:none;background:conic-gradient(from 0deg,#FBBC05,#EA4335,#34A853,#4285F4,#FBBC05);color:white;cursor:pointer>🎤</button></div></div></div></div>"
+HTML_PAGE += "<script>"
+HTML_PAGE += "let avatarState='idle'; let imgA=document.getElementById('imgA');"
+HTML_PAGE += "function setAvatarState(s){ avatarState=s; if(!imgA) return; if(s==='idle'){ imgA.style.transform='scale(1) rotate(0deg)'; imgA.style.filter='brightness(1)'; } else if(s==='waving'){ imgA.style.transform='scale(1.03) rotate(1deg)'; setTimeout(()=>{ imgA.style.transform='scale(1) rotate(0deg)'; avatarState='idle'; },900); } else if(s==='explaining'){ imgA.style.transform='scale(1.02) rotate(-1deg)'; setTimeout(()=>{ imgA.style.transform='scale(1) rotate(0deg)'; avatarState='idle'; },1500); } else if(s==='romantic'){ imgA.style.transform='scale(1.02) rotate(2deg)'; setTimeout(()=>{ imgA.style.transform='scale(1) rotate(0deg)'; avatarState='idle'; },2000); } else if(s==='thinking'){ imgA.style.transform='scale(1.01) rotate(-1deg)'; setTimeout(()=>{ imgA.style.transform='scale(1) rotate(0deg)'; avatarState='idle'; },1200); } }"
+HTML_PAGE += "setInterval(()=>{ if(avatarState==='idle' && imgA && Math.random()<0.12){ imgA.style.filter='brightness(0.96)'; setTimeout(()=>{ if(imgA) imgA.style.filter='brightness(1)'; },150); } },1000);"
+HTML_PAGE += "let threads=[]; try{ threads=JSON.parse(localStorage.getItem('aria_threads')||'[]'); }catch(e){ threads=[]; } if(threads.length===0){ threads=[{title:'তুমি কেমন আছো', msgs:[{role:'user', text:'তুমি কেমন আছো'},{role:'ai', text:'ভালো আছি Mahmudul! তুমি কেমন আছো?'}]}, {title:'Google AI Essentials', msgs:[]}]; } let currentThread=0;"
+HTML_PAGE += "function renderRecent(){ const el=document.getElementById('recentList'); if(!el) return; el.innerHTML=''; threads.forEach((t,i)=>{ const d=document.createElement('div'); d.style.cssText='padding:10px;cursor:pointer;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'; d.textContent=t.title; d.onclick=()=>{ currentThread=i; renderChat(); }; if(i===currentThread) d.style.background='#E8F0FE'; el.appendChild(d); }); }"
+HTML_PAGE += "function renderChat(){ const main=document.getElementById('chatMain'); if(!main) return; main.innerHTML=''; const th=threads[currentThread]; if(!th || th.msgs.length===0){ main.innerHTML='<div style=text-align:center;color:#5F6368;padding:20px><div style=font-size:28px>👋</div><div>Good evening, Mahmudul!</div><div>আমাকে কিছু জিজ্ঞেস করো</div></div>'; return; } th.msgs.forEach(m=>{ const d=document.createElement('div'); d.className='chatMsg '+(m.role==='user'?'chatUser':'chatAI'); d.innerHTML=(m.role==='user'?'':'<b>Aria:</b> ')+m.text; main.appendChild(d); }); main.scrollTop=main.scrollHeight; }"
+HTML_PAGE += "function openChatPage(initialQ){ const cp=document.getElementById('chatPage'); cp.style.display='flex'; renderRecent(); renderChat(); setAvatarState('waving'); if(initialQ){ document.getElementById('chatInput').value=initialQ; sendChat(); } setTimeout(()=>{ const inp=document.getElementById('chatInput'); if(inp) inp.focus(); },100); }"
+HTML_PAGE += "function closeChatPage(){ document.getElementById('chatPage').style.display='none'; setAvatarState('idle'); }"
+HTML_PAGE += "function newThread(){ threads.unshift({title:'New thread', msgs:[]}); currentThread=0; localStorage.setItem('aria_threads', JSON.stringify(threads)); renderRecent(); renderChat(); }"
+HTML_PAGE += "async function sendChat(){ const inp=document.getElementById('chatInput'); const q=inp.value.trim(); if(!q) return; if(q.toLowerCase().includes('miss you')||q.toLowerCase().includes('love you')||q.includes('মনে পড়ছে')) setAvatarState('romantic'); else if(q.includes('brief')||q.includes('সংক্ষেপে')||q.includes('সহজ')) setAvatarState('explaining'); else if(q.includes('course')||q.includes('google')||q.includes('nvidia')||q.includes('claude')) setAvatarState('waving'); else setAvatarState('thinking'); const th=threads[currentThread]; th.msgs.push({role:'user', text:q}); if(th.msgs.length===1) th.title=q.slice(0,40); localStorage.setItem('aria_threads', JSON.stringify(threads)); renderRecent(); renderChat(); inp.value=''; const main=document.getElementById('chatMain'); const loading=document.createElement('div'); loading.className='chatMsg chatAI'; loading.textContent='⏳ Aria Hexa Brain thinking... Groq 8b → ChatGPT Free → GitHub Models → OpenRouter → Claude Haiku → Gemini → Groq 70b'; main.appendChild(loading); main.scrollTop=main.scrollHeight; try{ const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})}); const data=await res.json(); loading.innerHTML='<b>'+(data.model||'aria')+':</b> '+(data.response||'উত্তর আসেনি'); th.msgs.push({role:'ai', text:'<b>'+(data.model||'aria')+':</b> '+(data.response||'')}); }catch(e){ loading.innerHTML='<b>aria-fallback:</b> ভালো আছি Mahmudul! তুমি বললে: '+q+' - আমি Aria, সহজ বাংলায় সাহায্য করবো।'; th.msgs.push({role:'ai', text:loading.innerHTML}); } localStorage.setItem('aria_threads', JSON.stringify(threads)); renderRecent(); setAvatarState('idle'); }"
+HTML_PAGE += "function startVoice(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert('Mic not supported'); const rec=new SR(); rec.lang='bn-BD'; rec.start(); rec.onresult=(e)=>{ document.getElementById('chatInput').value=e.results[0][0].transcript; sendChat(); }; }"
+HTML_PAGE += "function openCourse(){ document.getElementById('courseOverlay').style.display='block'; setAvatarState('waving'); } function openCourseWith(link){ openCourse(); document.getElementById('courseLink').value=link; } function closeCourse(){ document.getElementById('courseOverlay').style.display='none'; setAvatarState('idle'); }"
+HTML_PAGE += "async function parseCourse(){ const link=document.getElementById('courseLink').value.trim(); if(!link) return alert('লিংক দাও'); setAvatarState('explaining'); const resDiv=document.getElementById('courseResult'); resDiv.innerHTML='<div class=card>🔍 '+link+' থেকে Content তুলছি... Universal Parser - Simple Bangla Class 8 - মুদির দোকান বাদ</div>'; try{ const resp=await fetch('/api/course',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link})}); const data=await resp.json(); let html='<div class=card><b>✅ Source: '+data.source+' | Model: '+data.model_used+'</b>'; data.modules.forEach((m,i)=>{ html+='<div style=padding:10px;background:#F8F9FA;border-radius:8px;margin:6px 0><b>'+(i+1)+'. '+m.title+'</b><br>'+m.desc+'<br>🎥 '+m.video+'<br>• '+m.points.join(' • ')+'</div>'; }); html+='<div><b>Briefing:</b> '+data.briefing+'</div><div><b>Study Guide:</b> '+data.study_guide+'</div><div><b>Audio:</b> '+data.audio_script+'</div><div><b>FAQ:</b> '+data.faq.join('<br>')+'</div></div>'; resDiv.innerHTML=html; }catch(e){ resDiv.innerHTML='Error: '+e; } setTimeout(()=>setAvatarState('idle'),2000); }"
+HTML_PAGE += "document.getElementById('btnBrain').onclick=()=>{ alert('🧠 V15 Lingora Colorful + Chat Thread - Step 11 Hexa Brain: Groq 8b → ChatGPT Free → GitHub Models → OpenRouter → Claude Haiku → Gemini → Groq 70b | Last 4 + Summary | Avatar Aria Female Illustration Beige Suit | Profile Mahmudul Hasan Level 12 Creator'); setAvatarState('explaining'); }; document.getElementById('btnCourse').onclick=()=>{ openCourse(); }; document.getElementById('btnDoodle').onclick=()=>{ alert('🎨 Festival: Feb21, Mar26, Apr14, Eid, Durga Puja, Dec16, Dec25 - Asia/Dhaka'); }; document.getElementById('btnMic').onclick=()=>{ openChatPage(); startVoice(); }; renderRecent();"
+HTML_PAGE += "const hour=new Date().getHours(); let greet='Good morning'; if(hour>=12&&hour<17) greet='Good afternoon'; else if(hour>=17) greet='Good evening'; document.getElementById('greeting').textContent=greet+', Mahmudul! 👋';"
+HTML_PAGE += "</script></body></html>"
+HTML_PAGE += ""
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return HTML_PAGE
-
+class ChatRequest(BaseModel):
+    query: str
+@app.post("/api/chat")
+async def api_chat(req: ChatRequest):
+    result = await call_hexa_brain(req.query)
+    return result
+@app.post("/api/course")
+async def api_course(req: CourseRequest):
+    source = detect_course_source(req.link)
+    data = await generate_simple_bangla_modules(req.link, source)
+    return data
 @app.get("/health")
 async def health():
-    return {"status":"Aria V15 Final - Dashboard + Hexa Brain + Universal Course + Simple Bangla + Avatar State Machine - Idle/Triggered"}
-
-if __name__=="__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {"status": "Aria V15 Lingora Colorful + Chat Thread Page + Aria Avatar Female Beige Suit + Mahmudul Profile"}
